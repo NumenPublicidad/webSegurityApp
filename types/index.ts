@@ -28,3 +28,14 @@ export interface AlertData {
   timestamp: Timestamp | Date | null;
   userId?: string;
 }
+export interface AppUser {
+  uid: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  dni: string;
+  phone: string;
+  role: 'admin' | 'monitoreo' | 'user';
+  status?: 'active' | 'disabled'; 
+  createdAt?: string;
+}
