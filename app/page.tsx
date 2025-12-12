@@ -4,13 +4,16 @@ import { useState, useEffect, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
 import { auth, db } from '@/firebase/config';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { collection, onSnapshot, doc, updateDoc, getDoc, Timestamp } from 'firebase/firestore'; // Asegúrate de importar Timestamp
+import { collection, onSnapshot, doc, updateDoc, getDoc, Timestamp } from 'firebase/firestore';
 
+// --- VISTAS Y COMPONENTES ---
 import LoginView from '@/components/LoginView';
 import AlertDetailModal from '@/components/AlertDetailModal';
 import DashboardView from '@/views/DashboardView';
 import UsersView from '@/views/UsersView';
 import ReportsView from '@/views/ReportsView';
+import AnalyticsView from '@/views/AnalyticsView'; // <--- IMPORTACIÓN NUEVA
+
 import { AlertData, UserRole, ViewState } from '@/types';
 
 export default function App() {
@@ -31,6 +34,8 @@ export default function App() {
             const userData = userSnap.data();
             const dbRole = (userData.role || 'user') as UserRole;
             setRole(dbRole);
+            
+            // Redirección inteligente al iniciar sesión
             setView((currentView) => {
               if (currentView === 'login') {
                 if (dbRole === 'admin') return 'dashboard';
@@ -43,6 +48,7 @@ export default function App() {
           console.error("Error verificando rol:", error);
         }
       } else {
+        // Logout o sin sesión
         setView('login');
         setRole(null);
         setSelectedAlert(null);
@@ -51,7 +57,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Conexión a Firestore
+  // 2. Conexión a Firestore (Alertas en tiempo real)
   useEffect(() => {
     if (!user) return;
     const unsubscribe = onSnapshot(collection(db, 'alerts'), (snapshot) => {
@@ -66,7 +72,7 @@ export default function App() {
 
   // --- FILTROS Y ORDENAMIENTO ---
 
-  // A) Alertas ACTIVAS (Nuevas primero)
+  // A) Alertas ACTIVAS (Ordenadas por fecha descendente)
   const activeAlerts = useMemo(() => {
     return alerts
       .filter(a => a.status === 'active')
@@ -77,7 +83,7 @@ export default function App() {
       });
   }, [alerts]);
 
-  // B) Alertas HISTORIAL (Resolved/Cancelled - Nuevas primero)
+  // B) Historial (Resolved/Cancelled - Ordenados por fecha descendente)
   const historyAlerts = useMemo(() => {
     return alerts
       .filter(a => a.status === 'resolved' || a.status === 'cancelled')
@@ -116,28 +122,51 @@ export default function App() {
     }
   };
 
+  // --- RENDER ---
+
   if (view === 'login') return <LoginView onLogin={handleLogin} />;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <Navbar role={role} view={view} setView={setView} handleLogout={handleLogout} />
+      
       <main className="max-w-7xl mx-auto p-6 md:p-8">
         
-        {view === 'dashboard' && <DashboardView setView={setView} activeAlerts={activeAlerts} />}
+        {/* VISTA 1: DASHBOARD */}
+        {view === 'dashboard' && (
+          <DashboardView setView={setView} activeAlerts={activeAlerts} />
+        )}
         
-        {view === 'users' && <UsersView setView={setView} />}
+        {/* VISTA 2: USUARIOS (Necesita 'role' para mostrar botones de admin) */}
+        {view === 'users' && (
+          <UsersView setView={setView} role={role} />
+        )}
 
-        {/* Pasamos ambas listas a la vista de reportes */}
+        {/* VISTA 3: REPORTES (Necesita 'setView' para el botón volver) */}
         {view === 'reports' && (
           <ReportsView 
             activeAlerts={activeAlerts} 
-            historyAlerts={historyAlerts} // <--- NUEVA PROPIEDAD
+            historyAlerts={historyAlerts}
             setSelectedAlert={setSelectedAlert} 
+            setView={setView}
           />
         )}
 
+        {/* VISTA 4: ESTADÍSTICAS Y PDF (NUEVA) */}
+        {view === 'analytics' && (
+          <AnalyticsView setView={setView} />
+        )}
+
       </main>
-      {selectedAlert && <AlertDetailModal alert={selectedAlert} onClose={() => setSelectedAlert(null)} onResolve={resolveAlert} />}
+
+      {/* MODAL GLOBAL DE DETALLES */}
+      {selectedAlert && (
+        <AlertDetailModal 
+          alert={selectedAlert} 
+          onClose={() => setSelectedAlert(null)} 
+          onResolve={resolveAlert} 
+        />
+      )}
     </div>
   );
 }

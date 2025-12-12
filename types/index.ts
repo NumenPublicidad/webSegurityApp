@@ -1,14 +1,14 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type UserRole = 'admin' | 'monitoreo';
-
+// Agregamos 'user' que faltaba aquí
+export type UserRole = 'admin' | 'monitoreo' | 'user'; 
 
 export type AppView =
   | 'login'
   | 'dashboard'
   | 'users'
-  | 'reports';
-
+  | 'reports'
+  | 'analytics';
 
 export type ViewState = AppView;
 
@@ -35,7 +35,8 @@ export interface AppUser {
   email: string;
   dni: string;
   phone: string;
-  role: 'admin' | 'monitoreo' | 'user';
+  role: UserRole; 
   status?: 'active' | 'disabled'; 
-  createdAt?: string;
+  createdAt?: Timestamp | Date | string | null;
+  gender?: string;
 }
